@@ -1,0 +1,55 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
+
+data = pd.read_csv('heart_disease.csv')
+
+
+data['Gender'] = data['Gender'].map({'Male': 0, 'Female': 1})
+data['education'] = data['education'].map({'uneducated': 0, 'primaryschool': 1, 'graduate': 2, 'postgraduate': 3})
+data['prevalentStroke'] = data['prevalentStroke'].map({'no': 0, 'yes': 1})
+
+
+print(data['Heart_stroke'].value_counts())
+data['Heart_stroke'] = data['Heart_stroke'].str.lower().map({'no': 0, 'yes': 1})
+data = data.fillna(data.mean())
+
+
+X = data.drop('Heart_stroke', axis=1)
+y = data['Heart_stroke']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+ann_layer_sizes = [(30,15), (20,10), (10,5)]
+knn_neighbors = [3, 5, 7]
+svm_kernels = ['linear', 'poly', 'rbf']
+
+for layer_sizes in ann_layer_sizes:
+    ann_clf = MLPClassifier(hidden_layer_sizes=(30,15), max_iter=10000, random_state=42)
+    ann_clf.fit(X_train_scaled, y_train)
+    ann_pred = ann_clf.predict(X_test_scaled)
+    ann_acc = accuracy_score(y_test, ann_pred)
+    print(f'ANN Accuracy with {layer_sizes} hidden layers: {ann_acc}')
+
+for neighbors in knn_neighbors:
+    knn_clf = KNeighborsClassifier(n_neighbors=neighbors)
+    knn_clf.fit(X_train_scaled, y_train)
+    knn_pred = knn_clf.predict(X_test_scaled)
+    knn_acc = accuracy_score(y_test, knn_pred)
+    print(f'KNN Accuracy with {neighbors} neighbors: {knn_acc}')
+
+for kernel in svm_kernels:
+    svm_clf = SVC(C=1.0, kernel=kernel, random_state=42)
+    svm_clf.fit(X_train_scaled, y_train)
+    svm_pred = svm_clf.predict(X_test_scaled)
+    svm_acc = accuracy_score(y_test, svm_pred)
+    print(f'SVM Accuracy with {kernel} kernel: {svm_acc}')
