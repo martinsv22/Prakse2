@@ -1,0 +1,144 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+
+data = pd.read_csv('heart_disease.csv')
+
+
+data['Gender'] = data['Gender'].map({'Male': 0, 'Female': 1})
+data['education'] = data['education'].map({'uneducated': 0, 'primaryschool': 1, 'graduate': 2, 'postgraduate': 3})
+data['prevalentStroke'] = data['prevalentStroke'].map({'no': 0, 'yes': 1})
+
+
+print(data['Heart_stroke'].value_counts())
+data['Heart_stroke'] = data['Heart_stroke'].str.lower().map({'no': 0, 'yes': 1})
+data = data.fillna(data.mean())
+
+sns.pairplot(data, vars=['age', 'totChol', 'sysBP', 'diaBP'], hue='Heart_stroke')
+plt.show()
+
+sns.pairplot(data, vars=['age', 'totChol', 'sysBP', 'diaBP'], hue='prevalentHyp')
+plt.show()
+
+sns.pairplot(data, vars=['age', 'totChol', 'sysBP', 'diaBP'], hue='currentSmoker')
+plt.show()
+
+
+
+
+plt.figure(figsize=(10, 5))
+plt.scatter(data['age'][data['Heart_stroke'] == 0], data['totChol'][data['Heart_stroke'] == 0], color='blue', label='No Stroke')
+plt.scatter(data['age'][data['Heart_stroke'] == 1], data['totChol'][data['Heart_stroke'] == 1], color='red', label='Stroke')
+plt.xlabel('Age')
+plt.ylabel('Total Cholesterol')
+plt.title('Age vs Total Cholesterol')
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(10, 5))
+plt.scatter(data['sysBP'][data['Heart_stroke'] == 0], data['diaBP'][data['Heart_stroke'] == 0], color='blue', label='No Stroke')
+plt.scatter(data['sysBP'][data['Heart_stroke'] == 1], data['diaBP'][data['Heart_stroke'] == 1], color='red', label='Stroke')
+plt.xlabel('Systolic BP')
+plt.ylabel('Diastolic BP')
+plt.title('Systolic BP vs Diastolic BP')
+plt.legend()
+plt.show()
+
+
+plt.figure(figsize=(10, 5))
+plt.scatter(data['sysBP'], data['diaBP'], c=data['Heart_stroke'])
+plt.xlabel('Systolic BP')
+plt.ylabel('Diastolic BP')
+plt.title('Systolic BP vs Diastolic BP')
+plt.show()
+
+
+fig, axs = plt.subplots(2, figsize=(10, 10))
+
+
+axs[0].hist(data[data['Heart_stroke']==1]['age'], bins=30, color='red', alpha=0.7)
+axs[0].set_title('Stroke - Age distribution')
+
+
+axs[1].hist(data[data['Heart_stroke']==0]['age'], bins=30, color='blue', alpha=0.7)
+axs[1].set_title('No Stroke - Age distribution')
+
+plt.xlabel('Age')
+plt.ylabel('Frequency')
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 5))
+plt.hist([data[data['Heart_stroke']==0]['totChol'], data[data['Heart_stroke']==1]['totChol']], label=['No Stroke', 'Stroke'])
+plt.xlabel('Total Cholesterol')
+plt.ylabel('Frequency')
+plt.title('Total Cholesterol distribution')
+plt.legend()
+plt.show()
+
+
+sns.pairplot(data[['age', 'totChol']])
+plt.show()
+
+
+mean_age = np.mean(data['age'])
+variance_age = np.var(data['age'])
+mean_totChol = np.mean(data['totChol'])
+variance_totChol = np.var(data['totChol'])
+
+print(f"Age - Mean: {mean_age}, Variance: {variance_age}")
+print(f"Total Cholesterol - Mean: {mean_totChol}, Variance: {variance_totChol}")
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import AgglomerativeClustering, KMeans
+from scipy.cluster.hierarchy import dendrogram
+from sklearn.metrics import silhouette_score
+
+
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data)
+
+
+model = AgglomerativeClustering(distance_threshold=0, n_clusters=None)
+model = model.fit(data_scaled)
+
+
+counts = np.zeros(model.children_.shape[0])
+n_samples = len(model.labels_)
+
+for i, merge in enumerate(model.children_):
+    current_count = 0
+    for child_idx in merge:
+        if child_idx < n_samples:
+            current_count += 1
+        else:
+            current_count += counts[child_idx - n_samples]
+    counts[i] = current_count
+
+linkage_matrix = np.column_stack([model.children_, model.distances_,
+                                  counts]).astype(float)
+
+
+dendrogram(linkage_matrix)
+plt.show()
+
+
+sil_scores = []  
+K = range(2, 6)
+
+for k in K:
+    kmeans = KMeans(n_clusters=k)
+    kmeans.fit(data_scaled)
+    labels = kmeans.labels_
+    sil_scores.append(silhouette_score(data_scaled, labels, metric = 'euclidean'))
+
+
+plt.figure(figsize=(10,5))
+plt.plot(K, sil_scores, 'bx-')
+plt.xlabel('k')
+plt.ylabel('Silhouette Score')
+plt.title('Silhouette Score for Different Numbers of Clusters')
+plt.show()
